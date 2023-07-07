@@ -28,7 +28,7 @@ export const HandSketch = ({ handpose }: Props) => {
   const r = 150; // <の長さ.
   const offset = 60; // 左右の手指の出力位置の間隔
   const scale = 1; // 指先と付け根の距離の入力値に対する、出力時に使うスケール比。
-  const circleSize = 80;
+  const circleSize = 200;
 
   // module aliases
   let Engine = Matter.Engine,
@@ -57,7 +57,7 @@ export const HandSketch = ({ handpose }: Props) => {
     }
   );
 
-  const circle = Bodies.circle(window.innerWidth / 2, -1000, circleSize);
+  const circle = Bodies.circle(window.innerWidth / 2, -100, circleSize);
 
   // create an engine
   let engine: Matter.Engine;
@@ -79,7 +79,6 @@ export const HandSketch = ({ handpose }: Props) => {
     p5.strokeWeight(10);
 
     engine = Engine.create();
-    engine.gravity.y = 0.1;
     Composite.add(engine.world, [...edges, circle, floor]);
   };
 
@@ -197,10 +196,14 @@ export const HandSketch = ({ handpose }: Props) => {
         const i3 = i * 3;
         const i2 = i * 2;
 
-        Matter.Body.setPosition(edges[i2], {
-          x: (posArr[i3].x + posArr[i3 + 1].x) / 2,
-          y: (posArr[i3].y + posArr[i3 + 1].y) / 2,
-        });
+        Matter.Body.setPosition(
+          edges[i2],
+          {
+            x: (posArr[i3].x + posArr[i3 + 1].x) / 2,
+            y: (posArr[i3].y + posArr[i3 + 1].y) / 2,
+          }, //@ts-ignore
+          true
+        );
         Matter.Body.setAngle(
           edges[i2],
           Math.atan2(
@@ -208,16 +211,21 @@ export const HandSketch = ({ handpose }: Props) => {
             posArr[i3 + 1].x - posArr[i3].x
           )
         );
-        Matter.Body.setPosition(edges[i2 + 1], {
-          x: (posArr[i3 + 1].x + posArr[i3 + 2].x) / 2,
-          y: (posArr[i3 + 1].y + posArr[i3 + 2].y) / 2,
-        });
+        Matter.Body.setPosition(
+          edges[i2 + 1],
+          {
+            x: (posArr[i3 + 1].x + posArr[i3 + 2].x) / 2,
+            y: (posArr[i3 + 1].y + posArr[i3 + 2].y) / 2,
+          }, //@ts-ignore
+          true
+        );
         Matter.Body.setAngle(
           edges[i2 + 1],
           Math.atan2(
             posArr[i3 + 2].y - posArr[i3 + 1].y,
             posArr[i3 + 2].x - posArr[i3 + 1].x
-          )
+          ), //@ts-ignore
+          true
         );
 
         // p5.push();
