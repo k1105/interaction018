@@ -15,7 +15,7 @@ type Props = {
   handpose: MutableRefObject<Hand[]>;
 };
 
-const mainColor = 0;
+const mainColor = 220;
 
 type Handpose = Keypoint[];
 
@@ -49,8 +49,8 @@ export const HandSketch = ({ handpose }: Props) => {
 
   const floor = Bodies.rectangle(
     window.innerWidth / 2,
-    (window.innerHeight / 3) * 2,
-    window.innerWidth,
+    (window.innerHeight / 3) * 2.5,
+    window.innerWidth / 2,
     10,
     {
       isStatic: true,
@@ -67,6 +67,7 @@ export const HandSketch = ({ handpose }: Props) => {
   } = { left: [], right: [] };
 
   const debugLog = useRef<{ label: string; value: any }[]>([]);
+  const distList: number[][] = new Array(5).fill([0, 0]);
 
   const preload = (p5: p5Types) => {
     // 画像などのロードを行う
@@ -101,14 +102,8 @@ export const HandSketch = ({ handpose }: Props) => {
         label: hand.handedness + " accuracy",
         value: hand.score,
       });
-      debugLog.current.push({
-        label: hand.handedness + " is front",
-        //@ts-ignore
-        value: isFront(hand.keypoints, hand.handedness.toLowerCase()),
-      });
     }
 
-    p5.clear();
     // --
     // <> pinky
     // <> ring
@@ -123,7 +118,7 @@ export const HandSketch = ({ handpose }: Props) => {
     let end: number = 0;
 
     const posArr: { x: number; y: number }[] = [];
-
+    p5.clear();
     if (hands.left.length > 0 || hands.right.length > 0) {
       //右手、左手のうちのどちらかが認識されていた場合
       // 片方の手の動きをもう片方に複製する
@@ -132,63 +127,69 @@ export const HandSketch = ({ handpose }: Props) => {
       } else if (hands.right.length == 0) {
         hands.right = hands.left;
       }
-
-      p5.push();
-      p5.translate(window.innerWidth / 2, (2 * window.innerHeight) / 3);
-
+      //update distList
       for (let n = 0; n < 5; n++) {
         start = 4 * n + 1;
         end = 4 * n + 4;
-
-        const left_d = (hands.left[end].y - hands.left[start].y) * scale;
-        const right_d = (hands.right[end].y - hands.right[start].y) * scale;
-
-        [left_d, right_d].forEach((d, index) => {
-          const sign = (-1) ** (1 - index); //正負の符号
-          p5.push();
-          p5.translate(sign * offset, 0);
-          d = Math.min(Math.max(-r, d), 0);
-          posArr.push(getCurrentPosition({ p5 }));
-          p5.line(0, 0, (sign * Math.sqrt(r ** 2 - d ** 2)) / 2, d / 2);
-          p5.translate((sign * Math.sqrt(r ** 2 - d ** 2)) / 2, d / 2);
-          posArr.push(getCurrentPosition({ p5 }));
-          p5.line(0, 0, -(sign * Math.sqrt(r ** 2 - d ** 2)) / 2, d / 2);
-
-          p5.translate(-(sign * Math.sqrt(r ** 2 - d ** 2)) / 2, d / 2);
-          posArr.push(getCurrentPosition({ p5 }));
-
-          p5.pop();
-        });
-
-        //全体座標の回転と高さ方向へのtranslate
-        let tmp_l_d = 0;
-        let tmp_r_d = 0;
-
-        if (r < Math.abs(left_d)) {
-          tmp_l_d = -r;
-        } else if (left_d > 0) {
-          tmp_l_d = 0;
-        } else {
-          tmp_l_d = left_d;
-        }
-        if (r < Math.abs(right_d)) {
-          tmp_r_d = -r;
-        } else if (right_d > 0) {
-          tmp_r_d = 0;
-        } else {
-          tmp_r_d = right_d;
-        }
-
-        p5.translate(0, (tmp_l_d + tmp_r_d) / 2);
-        //yBase += (tmp_l_d + tmp_r_d) / 2;
-        p5.rotate(-Math.atan2(tmp_l_d - tmp_r_d, 2 * offset));
+        distList[n] = [
+          (hands.left[end].y - hands.left[start].y) * scale,
+          (hands.right[end].y - hands.right[start].y) * scale,
+        ];
       }
     }
+
+    p5.push();
+    p5.translate(window.innerWidth / 2, (2.5 * window.innerHeight) / 3);
+
+    for (const dist of distList) {
+      dist.forEach((d, index) => {
+        const sign = (-1) ** (1 - index); //正負の符号
+        p5.push();
+        p5.translate(sign * offset, 0);
+        d = Math.min(Math.max(-r, d), 0);
+        posArr.push(getCurrentPosition({ p5 }));
+        p5.line(0, 0, (sign * Math.sqrt(r ** 2 - d ** 2)) / 2, d / 2);
+        p5.translate((sign * Math.sqrt(r ** 2 - d ** 2)) / 2, d / 2);
+        posArr.push(getCurrentPosition({ p5 }));
+        p5.line(0, 0, -(sign * Math.sqrt(r ** 2 - d ** 2)) / 2, d / 2);
+
+        p5.translate(-(sign * Math.sqrt(r ** 2 - d ** 2)) / 2, d / 2);
+        posArr.push(getCurrentPosition({ p5 }));
+
+        p5.pop();
+      });
+
+      //全体座標の回転と高さ方向へのtranslate
+      let tmp_l_d = 0;
+      let tmp_r_d = 0;
+
+      if (r < Math.abs(dist[0])) {
+        tmp_l_d = -r;
+      } else if (dist[0] > 0) {
+        tmp_l_d = 0;
+      } else {
+        tmp_l_d = dist[0];
+      }
+      if (r < Math.abs(dist[1])) {
+        tmp_r_d = -r;
+      } else if (dist[1] > 0) {
+        tmp_r_d = 0;
+      } else {
+        tmp_r_d = dist[1];
+      }
+
+      p5.translate(0, (tmp_l_d + tmp_r_d) / 2);
+      //yBase += (tmp_l_d + tmp_r_d) / 2;
+      p5.rotate(-Math.atan2(tmp_l_d - tmp_r_d, 2 * offset));
+    }
+
     p5.pop();
 
     p5.push();
     p5.noStroke();
-    p5.fill(255);
+    if (circle.position.y > 2000) {
+      Matter.Body.setPosition(circle, { x: window.innerWidth / 2, y: -100 });
+    }
     p5.circle(circle.position.x, circle.position.y, circleSize * 2);
     p5.rectMode(p5.CENTER);
     if (posArr.length == 30) {
@@ -238,7 +239,7 @@ export const HandSketch = ({ handpose }: Props) => {
         // p5.rotate(edges[i2 + 1].angle);
         // p5.rect(0, 0, r / 2, 10);
         // p5.pop();
-        p5.rect(floor.position.x, floor.position.y, window.innerWidth, 10);
+        p5.rect(floor.position.x, floor.position.y, window.innerWidth / 2, 10);
       }
     }
     p5.pop();
